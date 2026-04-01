@@ -1200,19 +1200,40 @@ function closeLog() {
 
 function addSwipeClose(el, closeFn) {
   let startY = 0, startX = 0;
+
   el.addEventListener('touchstart', e => {
     startY = e.touches[0].clientY;
     startX = e.touches[0].clientX;
+    el.style.transition = 'none';
   }, { passive: true });
+
+  el.addEventListener('touchmove', e => {
+    const dy = e.touches[0].clientY - startY;
+    const dx = Math.abs(e.touches[0].clientX - startX);
+    if (dy > 0 && dx < 50) {
+      el.style.transform = `translateY(${dy}px)`;
+    }
+  }, { passive: true });
+
   el.addEventListener('touchend', e => {
     const dy = e.changedTouches[0].clientY - startY;
-    const dx = Math.abs(e.changedTouches[0].clientX - startX);
-    if (dy > 80 && dx < 40) closeFn();
+    el.style.transition = 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)';
+    if (dy > 100) {
+      el.style.transform = 'translateY(110%)';
+      setTimeout(() => {
+        el.style.transform = '';
+        el.style.transition = '';
+        closeFn();
+      }, 300);
+    } else {
+      el.style.transform = '';
+      setTimeout(() => { el.style.transition = ''; }, 300);
+    }
   }, { passive: true });
 }
 
 function initSwipeDown() {
-  // Swipe na widoku logowania (przy scrollu na górze)
+  // Swipe w dół na widoku logowania
   const logEl = document.getElementById('view-log');
   let startY = 0, startX = 0;
   logEl.addEventListener('touchstart', e => {
@@ -1225,11 +1246,30 @@ function initSwipeDown() {
     if (dy > 80 && dx < 40 && logEl.scrollTop === 0) closeLog();
   }, { passive: true });
 
-  // Swipe na modalach (bottom sheets)
+  // Swipe w dół na modalach (bottom sheets) — płynna animacja
   document.querySelectorAll('.modal-sheet').forEach(sheet => {
     const overlay = sheet.parentElement;
     addSwipeClose(sheet, () => overlay.classList.remove('active'));
   });
+
+  // Swipe lewo/prawo — zmiana miesięcy
+  initHorizontalSwipe(document.getElementById('view-dashboard'), prevMonth, nextMonth);
+  initHorizontalSwipe(document.getElementById('view-stats'), prevStatMonth, nextStatMonth);
+}
+
+function initHorizontalSwipe(el, onRight, onLeft) {
+  let startX = 0, startY = 0;
+  el.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+  el.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = Math.abs(e.changedTouches[0].clientY - startY);
+    if (Math.abs(dx) > 60 && dy < 50) {
+      dx < 0 ? onLeft() : onRight();
+    }
+  }, { passive: true });
 }
 
 // ---- Kopiuj trening do schowka ----
