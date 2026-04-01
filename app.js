@@ -383,6 +383,7 @@ function startNewWorkout(plan = null, date = null) {
     distance:    '',
     duration:    '',
     heartRate:   '',
+    calories:    '',
     totalVolume: 0,
     fromPlan:    plan?.id || null
   };
@@ -413,6 +414,7 @@ function renderLog() {
     renderExercises();
     calculateVolume();
   }
+  document.getElementById('log-calories').value = w.calories || '';
 }
 
 function setWorkoutType(type) {
@@ -617,6 +619,7 @@ async function saveWorkout() {
     w.duration  = document.getElementById('log-duration').value || '';
     w.heartRate = parseInt(document.getElementById('log-heartrate').value) || 0;
   }
+  w.calories = parseInt(document.getElementById('log-calories').value) || 0;
   calculateVolume();
 
   const data = {
@@ -627,6 +630,7 @@ async function saveWorkout() {
     distance:    w.distance    || null,
     duration:    w.duration    || null,
     heartRate:   w.heartRate   || null,
+    calories:    w.calories    || 0,
     totalVolume: w.totalVolume || 0,
     fromPlan:    w.fromPlan    || null,
     updatedAt:   firebase.firestore.FieldValue.serverTimestamp()
@@ -934,12 +938,14 @@ function renderStats() {
                               .reduce((s, w) => s + (w.totalVolume || 0), 0);
   const totalDistance = monthW.filter(w => w.type === 'rower')
                               .reduce((s, w) => s + (w.distance || 0), 0);
+  const totalCalories = monthW.reduce((s, w) => s + (w.calories || 0), 0);
   const totalCount    = monthW.length;
 
   document.getElementById('stats-month-name').textContent  = `${MONTHS[m]} ${y}`;
   document.getElementById('stats-volume').textContent      = totalVolume.toLocaleString('pl') + ' kg';
   document.getElementById('stats-distance').textContent    = totalDistance.toFixed(1) + ' km';
   document.getElementById('stats-count').textContent       = totalCount;
+  document.getElementById('stats-calories').textContent    = totalCalories.toLocaleString('pl') + ' kcal';
 
   renderStrengthChart();
   renderVolumeChart();
@@ -1102,8 +1108,13 @@ async function showWorkoutDetail(workoutId) {
       </div>`;
   }
 
+  if (w.calories) {
+    html += `<div class="detail-calories">🔥 Spalone kalorie: <strong>${w.calories} kcal</strong></div>`;
+  }
+
   html += `
     <div class="detail-footer-actions">
+      <button class="btn-secondary" onclick="repeatWorkout('${w.id}')">🔁 Powtórz</button>
       <button class="btn-secondary" onclick="copyWorkout('${w.id}')">📋 Kopiuj</button>
       <button class="btn-secondary" onclick="editWorkout('${w.id}')">✏️ Edytuj</button>
       <button class="btn-danger"    onclick="deleteWorkout('${w.id}')">🗑 Usuń</button>
@@ -1132,6 +1143,32 @@ async function deleteWorkout(workoutId) {
 
 function closeDetailModal() {
   document.getElementById('modal-detail').classList.remove('active');
+}
+
+function repeatWorkout(workoutId) {
+  const w = state.allWorkouts.find(x => x.id === workoutId);
+  if (!w) return;
+  const today = new Date().toISOString().split('T')[0];
+  state.currentWorkout = {
+    id:          null,
+    date:        today,
+    type:        w.type,
+    name:        w.name,
+    exercises:   JSON.parse(JSON.stringify(w.exercises || [])).map(ex => ({
+      ...ex,
+      id: genId(),
+      sets: (ex.sets || []).map(s => ({ ...s, id: genId(), done: false }))
+    })),
+    distance:    w.distance    || '',
+    duration:    w.duration    || '',
+    heartRate:   w.heartRate   || '',
+    calories:    '',
+    totalVolume: 0,
+    fromPlan:    null
+  };
+  closeDetailModal();
+  showView('log');
+  showToast('Załadowano poprzedni trening 🔁');
 }
 
 // ---- Zamknij log (X lub swipe w dół) ----
@@ -1172,6 +1209,7 @@ function copyWorkout(workoutId) {
       });
     });
     text += `\n💪 Całkowita objętość: ${(w.totalVolume || 0).toLocaleString('pl')} kg`;
+  if (w.calories) text += `\n🔥 Spalone kalorie: ${w.calories} kcal`;
   } else {
     text += `📏 Dystans: ${w.distance || 0} km\n`;
     text += `⏱ Czas: ${w.duration || '--:--'}\n`;
