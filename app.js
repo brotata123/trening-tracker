@@ -359,6 +359,19 @@ function renderLastWorkouts() {
   }).join('');
 }
 
+function copyMyLink() {
+  const url = window.location.href.split('#')[0] + '#' + localStorage.getItem('trening_hash');
+  navigator.clipboard.writeText(url)
+    .catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    });
+  showToast('Link skopiowany! Otwórz go na innych urządzeniach 🔗');
+}
+
 function prevMonth() {
   if (--state.calendarMonth < 0) { state.calendarMonth = 11; state.calendarYear--; }
   renderCalendar();
