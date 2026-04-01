@@ -637,6 +637,29 @@
     .history-sets { display: flex; flex-wrap: wrap; gap: 6px; }
 
     /* ============================================================
+       HISTORIA
+    ============================================================ */
+    .historia-filters {
+      display: flex; gap: 8px; padding: 0 16px 16px;
+      overflow-x: auto; scrollbar-width: none;
+    }
+    .historia-filters::-webkit-scrollbar { display: none; }
+    .filter-btn {
+      flex-shrink: 0; background: var(--card); border: 1px solid var(--border);
+      color: var(--text-muted); border-radius: 20px; padding: 7px 14px;
+      font-size: 0.8rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .filter-btn.active { background: var(--blue-dim); border-color: var(--blue); color: var(--blue); }
+
+    .historia-month-group { margin-bottom: 8px; }
+    .historia-month-label {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 1.5px;
+      color: var(--text-dim); text-transform: uppercase;
+      padding: 12px 20px 6px;
+    }
+
+    /* ============================================================
        RESPONSIVE & SAFE AREAS
     ============================================================ */
     @media (min-width: 481px) {
@@ -839,13 +862,28 @@
     </div>
   </div>
 
+  <!-- ======================== HISTORIA ======================== -->
+  <div id="view-historia" class="view">
+    <div class="page-header">
+      <div class="page-title">Historia</div>
+      <div class="page-sub">Wszystkie Twoje treningi</div>
+    </div>
+    <div class="historia-filters" id="historia-filters">
+      <button class="filter-btn active" data-filter="all">Wszystkie</button>
+      <button class="filter-btn" data-filter="silownia">🏋️ Siłownia</button>
+      <button class="filter-btn" data-filter="rower">🚴 Rower</button>
+      <button class="filter-btn" data-filter="inne">⚡ Inne</button>
+    </div>
+    <div id="historia-list"></div>
+  </div>
+
   <!-- ======================== BOTTOM NAV ======================== -->
   <nav id="bottom-nav">
     <button class="nav-btn active" data-view="dashboard">
       <span class="nav-icon">📅</span>Dashboard
     </button>
-    <button class="nav-btn" data-view="log">
-      <span class="nav-icon">📝</span>Log
+    <button class="nav-btn" data-view="historia">
+      <span class="nav-icon">📝</span>Historia
     </button>
     <button id="fab">+</button>
     <button class="nav-btn" data-view="plans">

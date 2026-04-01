@@ -208,6 +208,7 @@ function showView(viewName) {
   switch (viewName) {
     case 'dashboard': renderDashboard(); break;
     case 'log':       renderLog();       break;
+    case 'historia':  renderHistoria();  break;
     case 'plans':     renderPlans();     break;
     case 'stats':     buildExerciseSelect(); renderStats(); break;
   }
@@ -673,6 +674,80 @@ async function autoSaveWorkout() {
 
 // ============================================================
 //  PLANY TRENINGOWE
+// ============================================================
+//  HISTORIA
+// ============================================================
+let historiaFilter = 'all';
+
+function renderHistoria() {
+  // Filtry
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === historiaFilter);
+    btn.onclick = () => { historiaFilter = btn.dataset.filter; renderHistoria(); };
+  });
+
+  const filtered = historiaFilter === 'all'
+    ? state.allWorkouts
+    : state.allWorkouts.filter(w => w.type === historiaFilter);
+
+  const con = document.getElementById('historia-list');
+
+  if (filtered.length === 0) {
+    con.innerHTML = `
+      <div class="empty-state">
+        <div style="font-size:2.5rem">📋</div>
+        <div>Brak treningów</div>
+        <div class="empty-sub">Zacznij od przycisku [+]</div>
+      </div>`;
+    return;
+  }
+
+  // Grupuj po miesiącu
+  const MONTHS = ['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec',
+                  'Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'];
+  const groups = {};
+  filtered.forEach(w => {
+    const d = new Date(w.date + 'T00:00:00');
+    const key = `${d.getFullYear()}-${String(d.getMonth()).padStart(2,'0')}`;
+    const label = `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+    if (!groups[key]) groups[key] = { label, items: [] };
+    groups[key].items.push(w);
+  });
+
+  con.innerHTML = Object.keys(groups).sort((a,b) => b.localeCompare(a)).map(key => {
+    const g = groups[key];
+    const rows = g.items.map(w => {
+      const type    = WORKOUT_TYPES[w.type] || WORKOUT_TYPES.inne;
+      const dateObj = new Date(w.date + 'T00:00:00');
+      const day     = dateObj.getDate();
+      const mon     = ['STY','LUT','MAR','KWI','MAJ','CZE',
+                       'LIP','SIE','WRZ','PAŹ','LIS','GRU'][dateObj.getMonth()];
+      const isCardio = w.type === 'rower';
+      const stat = isCardio
+        ? `<span class="stat-big">${w.distance||0}</span><span class="stat-unit"> km · ${w.duration||'--:--'}</span>`
+        : `<span class="stat-big">${(w.totalVolume||0).toLocaleString('pl')}</span><span class="stat-unit"> kg</span>`;
+      return `
+        <div class="workout-card" onclick="showWorkoutDetail('${w.id}')">
+          <div class="workout-card-date">
+            <div class="wc-day">${day}</div>
+            <div class="wc-mon">${mon}</div>
+          </div>
+          <div class="workout-card-info">
+            <div class="wc-type" style="color:${type.color}">${type.icon} ${type.label.toUpperCase()}${w.name ? ' · ' + w.name : ''}</div>
+            <div class="wc-stat">${stat}</div>
+          </div>
+          <div class="wc-bg-icon" style="color:${type.color}">${type.icon}</div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="historia-month-group">
+        <div class="historia-month-label">${g.label} · ${g.items.length} trening${g.items.length > 1 ? 'i' : ''}</div>
+        ${rows}
+      </div>`;
+  }).join('');
+}
+
 // ============================================================
 function renderPlans() {
   const con = document.getElementById('plans-list');
