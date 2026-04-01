@@ -107,26 +107,13 @@ async function initApp() {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
 
-  // User ID z hasha URL — ten sam na wszystkich urządzeniach
-  let hash = window.location.hash.slice(1);
-
-  if (!hash || hash.length < 6) {
-    // Brak hasha w URL — sprawdź localStorage
-    const stored = localStorage.getItem('trening_hash');
-    if (stored && stored.length >= 6) {
-      window.location.replace('./index.html#' + stored);
-      return;
-    }
-    // Pierwsze uruchomienie — wygeneruj nowy hash
-    hash = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10);
-    localStorage.setItem('trening_hash', hash);
-    window.location.replace('./index.html#' + hash);
-    return;
-  }
-
-  // Hash w URL — zapisz w localStorage jako backup
-  localStorage.setItem('trening_hash', hash);
-  state.userId = 'user_' + hash;
+  // User ID — na podstawie nazwy użytkownika GitHub Pages
+  // brotata123.github.io → userId = 'brotata123'
+  // Działa automatycznie na wszystkich urządzeniach bez konfiguracji
+  const githubUser = window.location.hostname.split('.')[0];
+  state.userId = githubUser !== 'localhost' && githubUser !== '127'
+    ? githubUser
+    : 'dev_local';
 
   // Firebase init
   try {
