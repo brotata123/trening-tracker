@@ -294,14 +294,24 @@
     #view-log { background: var(--bg); }
 
     .log-header {
-      padding: 52px 20px 16px;
+      padding: 12px 20px 16px;
       background: linear-gradient(180deg, var(--bg2) 0%, transparent 100%);
+    }
+    .swipe-handle {
+      width: 40px; height: 4px; background: var(--card3);
+      border-radius: 4px; margin: 0 auto 14px;
     }
     .log-header-row {
       display: flex; align-items: center; justify-content: space-between;
       margin-bottom: 16px;
     }
     .log-title { font-size: 1.4rem; font-weight: 800; }
+    .log-close-btn {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--card3); border: none; color: var(--text-muted);
+      font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
 
     /* Typ treningu */
     .type-selector {
@@ -675,8 +685,10 @@
 
   <!-- ======================== LOG ======================== -->
   <div id="view-log" class="view">
-    <div class="log-header">
+    <div class="log-header" id="log-header-drag">
+      <div class="swipe-handle"></div>
       <div class="log-header-row">
+        <button class="log-close-btn" onclick="closeLog()">✕</button>
         <div class="log-title">Nowy trening</div>
         <div id="current-volume" style="font-size:1rem;font-weight:800;color:var(--blue)">0 kg</div>
       </div>

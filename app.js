@@ -22,7 +22,7 @@ const EXERCISES = [
     'Plecy - Wiosłowanie hantlem jednorącz w oparciu o ławkę',
     'Plecy - Martwy ciąg ze sztangą',
     'Plecy - Prostowanie ramion na wyciągu (narciarz)',
-    'Plecy - Szruksy ze sztangą'
+    'Plecy - Szruksy z hantlami'
   ]},
   { group: 'Barki', items: [
     'Barki - Wyciskanie żołnierskie sztangi (OHP)',
@@ -186,6 +186,9 @@ async function initApp() {
 
   // Stats — wykres siły (wybór ćwiczenia)
   document.getElementById('stats-exercise-select').addEventListener('change', renderStrengthChart);
+
+  // Swipe down na logu
+  initSwipeDown();
 
   // Pokaż dashboard
   showView('dashboard');
@@ -1026,6 +1029,7 @@ async function showWorkoutDetail(workoutId) {
 
   html += `
     <div class="detail-footer-actions">
+      <button class="btn-secondary" onclick="copyWorkout('${w.id}')">📋 Kopiuj</button>
       <button class="btn-secondary" onclick="editWorkout('${w.id}')">✏️ Edytuj</button>
       <button class="btn-danger"    onclick="deleteWorkout('${w.id}')">🗑 Usuń</button>
     </div>`;
@@ -1053,6 +1057,63 @@ async function deleteWorkout(workoutId) {
 
 function closeDetailModal() {
   document.getElementById('modal-detail').classList.remove('active');
+}
+
+// ---- Zamknij log (X lub swipe w dół) ----
+function closeLog() {
+  showView('dashboard');
+}
+
+function initSwipeDown() {
+  const el = document.getElementById('view-log');
+  let startY = 0, startX = 0;
+  el.addEventListener('touchstart', e => {
+    startY = e.touches[0].clientY;
+    startX = e.touches[0].clientX;
+  }, { passive: true });
+  el.addEventListener('touchend', e => {
+    const dy = e.changedTouches[0].clientY - startY;
+    const dx = Math.abs(e.changedTouches[0].clientX - startX);
+    if (dy > 80 && dx < 40 && el.scrollTop === 0) closeLog();
+  }, { passive: true });
+}
+
+// ---- Kopiuj trening do schowka ----
+function copyWorkout(workoutId) {
+  const w = state.allWorkouts.find(x => x.id === workoutId);
+  if (!w) return;
+  const type = WORKOUT_TYPES[w.type] || WORKOUT_TYPES.inne;
+  const date = new Date(w.date + 'T00:00:00').toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  let text = `📅 ${date}\n`;
+  text += `🏋️ ${type.label}${w.name ? ' — ' + w.name : ''}\n\n`;
+
+  const isCardio = w.type === 'rower';
+  if (!isCardio) {
+    (w.exercises || []).forEach(ex => {
+      text += `• ${ex.name}\n`;
+      (ex.sets || []).forEach((s, i) => {
+        if (s.weight && s.reps) text += `  Seria ${i + 1}: ${s.weight} kg × ${s.reps} powt.\n`;
+      });
+    });
+    text += `\n💪 Całkowita objętość: ${(w.totalVolume || 0).toLocaleString('pl')} kg`;
+  } else {
+    text += `📏 Dystans: ${w.distance || 0} km\n`;
+    text += `⏱ Czas: ${w.duration || '--:--'}\n`;
+    if (w.heartRate) text += `❤️ Tętno: ${w.heartRate} bpm\n`;
+  }
+
+  navigator.clipboard.writeText(text)
+    .then(() => showToast('Trening skopiowany do schowka! 📋'))
+    .catch(() => {
+      // fallback dla starszych przeglądarek
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('Trening skopiowany do schowka! 📋');
+    });
 }
 
 // ============================================================
