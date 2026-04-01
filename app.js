@@ -109,12 +109,23 @@ async function initApp() {
 
   // User ID z hasha URL — ten sam na wszystkich urządzeniach
   let hash = window.location.hash.slice(1);
+
   if (!hash || hash.length < 6) {
-    // Brak hasha — wygeneruj i przekieruj
+    // Brak hasha w URL — sprawdź localStorage
+    const stored = localStorage.getItem('trening_hash');
+    if (stored && stored.length >= 6) {
+      window.location.replace('./index.html#' + stored);
+      return;
+    }
+    // Pierwsze uruchomienie — wygeneruj nowy hash
     hash = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10);
+    localStorage.setItem('trening_hash', hash);
     window.location.replace('./index.html#' + hash);
     return;
   }
+
+  // Hash w URL — zapisz w localStorage jako backup
+  localStorage.setItem('trening_hash', hash);
   state.userId = 'user_' + hash;
 
   // Firebase init
