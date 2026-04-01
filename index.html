@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0d0d18">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Trening">
+  <title>Trening Tracker</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ============================================================
+       RESET & ZMIENNE
+    ============================================================ */
+    *, *::before, *::after {
+      margin: 0; padding: 0; box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      --bg:          #0d0d18;
+      --bg2:         #12121f;
+      --card:        #16162a;
+      --card2:       #1e1e35;
+      --card3:       #252540;
+      --border:      rgba(255,255,255,0.07);
+      --blue:        #5b7fff;
+      --blue-dim:    rgba(91,127,255,0.15);
+      --purple:      #a78bfa;
+      --purple-dim:  rgba(167,139,250,0.15);
+      --amber:       #f59e0b;
+      --cyan:        #06b6d4;
+      --green:       #4ade80;
+      --red:         #f87171;
+      --text:        #ffffff;
+      --text-muted:  #8888aa;
+      --text-dim:    #555577;
+      --nav-h:       70px;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    html, body {
+      height: 100%; background: var(--bg);
+      color: var(--text); font-family: 'Inter', sans-serif;
+      overflow: hidden;
+    }
+
+    /* ============================================================
+       LAYOUT
+    ============================================================ */
+    #app {
+      display: flex; flex-direction: column;
+      height: 100dvh; max-width: 480px;
+      margin: 0 auto; position: relative;
+    }
+
+    .view {
+      display: none; flex: 1; overflow-y: auto;
+      padding-bottom: calc(var(--nav-h) + var(--safe-bottom) + 16px);
+    }
+    .view.active { display: flex; flex-direction: column; }
+
+    /* Scrollbar */
+    .view::-webkit-scrollbar { width: 3px; }
+    .view::-webkit-scrollbar-track { background: transparent; }
+    .view::-webkit-scrollbar-thumb { background: var(--card3); border-radius: 3px; }
+
+    /* ============================================================
+       BOTTOM NAV
+    ============================================================ */
+    #bottom-nav {
+      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 480px;
+      height: calc(var(--nav-h) + var(--safe-bottom));
+      background: var(--card); border-top: 1px solid var(--border);
+      display: flex; align-items: flex-start; justify-content: space-around;
+      padding-top: 10px; padding-bottom: var(--safe-bottom);
+      z-index: 100; backdrop-filter: blur(20px);
+    }
+
+    .nav-btn {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      background: none; border: none; cursor: pointer;
+      color: var(--text-dim); font-size: 0.7rem; font-weight: 500;
+      padding: 6px 16px; border-radius: 12px; transition: color 0.2s;
+      min-width: 64px;
+    }
+    .nav-btn .nav-icon { font-size: 1.3rem; transition: transform 0.2s; }
+    .nav-btn.active    { color: var(--blue); }
+    .nav-btn.active .nav-icon { transform: scale(1.15); }
+
+    /* FAB */
+    #fab {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: var(--blue); border: none; cursor: pointer;
+      font-size: 1.6rem; color: #fff; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 20px rgba(91,127,255,0.5);
+      transition: transform 0.15s, box-shadow 0.15s;
+      margin-top: -4px;
+    }
+    #fab:active { transform: scale(0.93); box-shadow: 0 2px 10px rgba(91,127,255,0.4); }
+
+    /* ============================================================
+       COMMON COMPONENTS
+    ============================================================ */
+    .page-header {
+      padding: 56px 20px 20px;
+      background: linear-gradient(180deg, var(--bg2) 0%, transparent 100%);
+    }
+    .page-title { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.5px; }
+    .page-sub   { color: var(--text-muted); font-size: 0.85rem; margin-top: 4px; }
+
+    .section-label {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 1.5px;
+      color: var(--text-muted); text-transform: uppercase;
+      padding: 20px 20px 8px;
+    }
+
+    .card {
+      background: var(--card); border-radius: 16px;
+      border: 1px solid var(--border); overflow: hidden;
+    }
+
+    /* Buttons */
+    .btn-primary {
+      background: var(--blue); color: #fff; border: none; cursor: pointer;
+      padding: 12px 20px; border-radius: 12px; font-size: 0.9rem; font-weight: 600;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn-primary:active { opacity: 0.85; transform: scale(0.97); }
+
+    .btn-secondary {
+      background: var(--card3); color: var(--text); border: none; cursor: pointer;
+      padding: 12px 20px; border-radius: 12px; font-size: 0.9rem; font-weight: 500;
+      transition: opacity 0.15s;
+    }
+    .btn-secondary:active { opacity: 0.75; }
+
+    .btn-danger {
+      background: rgba(248,113,113,0.15); color: var(--red); border: none; cursor: pointer;
+      padding: 12px 20px; border-radius: 12px; font-size: 0.9rem; font-weight: 500;
+    }
+
+    .btn-small {
+      background: var(--card3); color: var(--text-muted); border: none; cursor: pointer;
+      padding: 8px 12px; border-radius: 8px; font-size: 0.8rem; font-weight: 500;
+      transition: background 0.15s, color 0.15s;
+    }
+    .btn-small:active { background: var(--blue-dim); color: var(--blue); }
+    .btn-small.danger { color: var(--red); }
+    .btn-small.danger:active { background: rgba(248,113,113,0.15); }
+
+    .btn-icon-sm {
+      background: var(--card3); color: var(--text-muted); border: none; cursor: pointer;
+      padding: 6px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 500;
+      white-space: nowrap;
+    }
+    .btn-icon-sm.danger { color: var(--red); }
+    .btn-icon-sm.danger:active { background: rgba(248,113,113,0.15); }
+
+    /* Inputs */
+    input[type="text"], input[type="number"], input[type="date"],
+    input[type="time"], input[type="email"], select, textarea {
+      background: var(--card2); border: 1px solid var(--border);
+      color: var(--text); border-radius: 10px; font-family: 'Inter', sans-serif;
+      font-size: 0.95rem; padding: 12px 14px; width: 100%;
+      outline: none; transition: border-color 0.2s;
+      -webkit-appearance: none;
+    }
+    input:focus, select:focus { border-color: var(--blue); }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center; padding: 40px 20px; color: var(--text-muted);
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      font-size: 0.95rem;
+    }
+    .empty-sub { font-size: 0.8rem; color: var(--text-dim); }
+
+    /* Toast */
+    #toast {
+      position: fixed; bottom: calc(var(--nav-h) + var(--safe-bottom) + 16px);
+      left: 50%; transform: translateX(-50%) translateY(20px);
+      background: var(--card3); color: var(--text);
+      padding: 12px 20px; border-radius: 24px; font-size: 0.88rem; font-weight: 500;
+      white-space: nowrap; opacity: 0; pointer-events: none;
+      transition: opacity 0.25s, transform 0.25s; z-index: 999;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+    }
+    #toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ============================================================
+       DASHBOARD
+    ============================================================ */
+    #view-dashboard { background: var(--bg); }
+
+    .dash-header {
+      padding: 56px 20px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .dash-month-title {
+      font-size: 1.5rem; font-weight: 800; letter-spacing: -0.5px;
+    }
+    .cal-nav { display: flex; gap: 8px; }
+    .cal-nav-btn {
+      background: var(--card); border: 1px solid var(--border);
+      color: var(--text); width: 36px; height: 36px; border-radius: 10px;
+      font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Kalendarz */
+    .calendar-wrap { padding: 0 16px 8px; }
+    #cal-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+    .cal-day-header {
+      text-align: center; font-size: 0.7rem; font-weight: 600;
+      color: var(--text-dim); padding: 4px 0;
+    }
+    .cal-cell {
+      aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+      border-radius: 10px; font-size: 0.85rem; font-weight: 500;
+      color: var(--text-muted); position: relative; cursor: default;
+    }
+    .cal-cell.empty { pointer-events: none; }
+    .cal-cell.today {
+      background: var(--blue); color: #fff; font-weight: 700;
+    }
+    .cal-cell.has-workout {
+      color: var(--text); font-weight: 700; cursor: pointer;
+    }
+    .cal-cell.has-workout::after {
+      content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--dot-color, var(--blue));
+    }
+    .cal-cell.today.has-workout::after { background: #fff; }
+    .cal-cell.has-workout:not(.today) { background: var(--card); }
+    .cal-cell.has-workout:not(.today):active { background: var(--card2); }
+    .cal-cell.clickable-day { cursor: pointer; }
+    .cal-cell.clickable-day:hover { background: var(--card); color: var(--text); }
+    .cal-cell.clickable-day:active { background: var(--card2); }
+
+    /* Legenda */
+    .cal-legend {
+      display: flex; gap: 16px; padding: 8px 20px 4px; flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 0.72rem; color: var(--text-muted); font-weight: 500;
+    }
+    .legend-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+    }
+
+    /* Ostatnie treningi */
+    .workout-card {
+      margin: 0 16px 10px; padding: 16px;
+      background: var(--card); border-radius: 16px;
+      border: 1px solid var(--border);
+      display: flex; align-items: center; gap: 14px;
+      cursor: pointer; position: relative; overflow: hidden;
+      transition: background 0.15s;
+    }
+    .workout-card:active { background: var(--card2); }
+    .workout-card-date {
+      text-align: center; min-width: 38px; flex-shrink: 0;
+    }
+    .wc-day { font-size: 1.4rem; font-weight: 800; line-height: 1; }
+    .wc-mon { font-size: 0.65rem; font-weight: 700; color: var(--text-muted); letter-spacing: 1px; }
+    .workout-card-info { flex: 1; min-width: 0; }
+    .wc-type {
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 1px;
+      margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .wc-stat { font-size: 0.95rem; }
+    .stat-big { font-size: 1.5rem; font-weight: 800; }
+    .stat-unit { font-size: 0.8rem; color: var(--text-muted); }
+    .wc-bg-icon {
+      position: absolute; right: 12px; font-size: 2.8rem; opacity: 0.12;
+      pointer-events: none;
+    }
+
+    /* ============================================================
+       LOG WORKOUT
+    ============================================================ */
+    #view-log { background: var(--bg); }
+
+    .log-header {
+      padding: 52px 20px 16px;
+      background: linear-gradient(180deg, var(--bg2) 0%, transparent 100%);
+    }
+    .log-header-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .log-title { font-size: 1.4rem; font-weight: 800; }
+
+    /* Typ treningu */
+    .type-selector {
+      display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
+      scrollbar-width: none;
+    }
+    .type-selector::-webkit-scrollbar { display: none; }
+    .type-btn {
+      flex-shrink: 0; background: var(--card); border: 1px solid var(--border);
+      color: var(--text-muted); border-radius: 12px; padding: 8px 14px;
+      font-size: 0.82rem; font-weight: 600; cursor: pointer;
+      display: flex; align-items: center; gap: 6px;
+      transition: all 0.15s; white-space: nowrap;
+    }
+    .type-btn.active[data-type="silownia"] { background: var(--blue-dim); border-color: var(--blue); color: var(--blue); }
+    .type-btn.active[data-type="bieganie"] { background: var(--purple-dim); border-color: var(--purple); color: var(--purple); }
+    .type-btn.active[data-type="rower"]    { background: rgba(245,158,11,0.15); border-color: var(--amber); color: var(--amber); }
+    .type-btn.active[data-type="plywanie"] { background: rgba(6,182,212,0.15); border-color: var(--cyan); color: var(--cyan); }
+    .type-btn.active[data-type="inne"]     { background: rgba(156,163,175,0.15); border-color: #9ca3af; color: #9ca3af; }
+
+    /* Formularz logu */
+    .log-form { padding: 0 16px; }
+    .log-form-row { display: flex; gap: 10px; margin-bottom: 10px; }
+    .log-form-row > * { flex: 1; }
+    .log-form-row > .date-input { max-width: 155px; }
+
+    .log-volume-bar {
+      background: var(--card); border-radius: 14px; padding: 14px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px; border: 1px solid var(--border);
+    }
+    .vol-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 1px; color: var(--text-muted); }
+    #current-volume { font-size: 1.2rem; font-weight: 800; color: var(--blue); }
+
+    /* Ćwiczenia */
+    .exercise-block {
+      background: var(--card); border-radius: 16px; border: 1px solid var(--border);
+      margin-bottom: 12px; overflow: hidden;
+    }
+    .exercise-header {
+      display: flex; align-items: center; gap: 8px; padding: 12px 12px 8px;
+    }
+    .ex-name-select {
+      flex: 1; background: var(--card2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 12px; font-size: 0.88rem; font-weight: 600;
+      color: var(--text); cursor: pointer; min-width: 0;
+    }
+    .ex-name-select:focus { border-color: var(--blue); outline: none; }
+    .plan-ex-name.ex-name-select, select.plan-ex-name {
+      flex: 1; background: var(--card2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 10px; font-size: 0.82rem;
+      color: var(--text); cursor: pointer; min-width: 0;
+    }
+
+    .sets-table { padding: 0 12px 8px; }
+    .sets-header {
+      display: grid; grid-template-columns: 32px 1fr 1fr 44px;
+      gap: 6px; padding: 4px 0;
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 1px;
+      color: var(--text-dim); text-align: center;
+    }
+    .set-row {
+      display: grid; grid-template-columns: 32px 1fr 1fr 44px;
+      gap: 6px; align-items: center; padding: 4px 0;
+      border-radius: 8px; transition: background 0.15s;
+    }
+    .set-row.done { opacity: 0.5; }
+    .set-num {
+      text-align: center; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;
+    }
+    .set-input {
+      background: var(--card2); border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); text-align: center; padding: 10px 6px;
+      font-size: 1rem; font-weight: 700; font-family: 'Inter', sans-serif;
+      width: 100%; min-height: 44px; outline: none;
+    }
+    .set-input:focus { border-color: var(--blue); }
+    .set-check {
+      width: 44px; height: 44px; border-radius: 10px;
+      background: var(--card2); border: 2px solid var(--border);
+      color: var(--text-dim); font-size: 1rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .set-check.checked { background: var(--green); border-color: var(--green); color: #fff; }
+
+    .sets-actions {
+      display: flex; gap: 8px; padding: 8px 12px 12px; flex-wrap: wrap;
+    }
+
+    /* Cardio section */
+    .cardio-form { padding: 0 16px 16px; }
+    .cardio-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .cardio-field label {
+      display: block; font-size: 0.7rem; font-weight: 700; letter-spacing: 1px;
+      color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;
+    }
+
+    /* Floating add exercise */
+    .add-exercise-btn {
+      margin: 0 16px 16px;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      background: var(--blue-dim); border: 1px dashed var(--blue);
+      color: var(--blue); border-radius: 14px; padding: 14px;
+      font-size: 0.9rem; font-weight: 600; cursor: pointer; width: calc(100% - 32px);
+      transition: background 0.15s;
+    }
+    .add-exercise-btn:active { background: rgba(91,127,255,0.25); }
+
+    /* Save button */
+    .save-workout-btn {
+      margin: 0 16px 8px; padding: 16px;
+      background: var(--blue); border: none; border-radius: 16px;
+      color: #fff; font-size: 1rem; font-weight: 700; cursor: pointer; width: calc(100% - 32px);
+      box-shadow: 0 4px 20px rgba(91,127,255,0.35);
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .save-workout-btn:active { opacity: 0.85; transform: scale(0.98); }
+
+    /* Rest Timer Bar */
+    #rest-timer-bar {
+      position: fixed; bottom: calc(var(--nav-h) + var(--safe-bottom));
+      left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 480px;
+      background: var(--card2); border-top: 1px solid var(--border);
+      padding: 10px 16px 8px;
+      display: none; z-index: 90;
+      border-radius: 0;
+    }
+    #rest-timer-bar.active { display: block; }
+    .rest-bar-row {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;
+    }
+    #rest-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
+    .rest-time-wrap { display: flex; align-items: baseline; gap: 6px; }
+    #rest-remaining { font-size: 1.2rem; font-weight: 800; color: var(--blue); }
+    #rest-total { font-size: 0.75rem; color: var(--text-dim); }
+    #rest-duration-btn {
+      background: none; border: none; color: var(--text-dim); font-size: 0.8rem;
+      cursor: pointer; padding: 2px 6px; border-radius: 6px;
+    }
+    .rest-track {
+      height: 4px; background: var(--card3); border-radius: 4px; overflow: hidden;
+    }
+    #rest-progress {
+      height: 100%; background: var(--blue); border-radius: 4px; width: 0%;
+      transition: width 1s linear;
+    }
+
+    /* ============================================================
+       PLANS
+    ============================================================ */
+    #view-plans { background: var(--bg); }
+
+    .plans-header {
+      padding: 52px 20px 16px;
+      display: flex; align-items: flex-end; justify-content: space-between;
+    }
+
+    .plan-card {
+      margin: 0 16px 12px; padding: 16px;
+      background: var(--card); border-radius: 18px;
+      border: 1px solid var(--border);
+    }
+    .plan-card-top {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
+    }
+    .plan-icon {
+      width: 40px; height: 40px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem;
+    }
+    .plan-badge {
+      font-size: 0.7rem; font-weight: 600; color: var(--text-muted);
+      background: var(--card2); padding: 4px 10px; border-radius: 20px;
+    }
+    .plan-badge.badge-new { color: var(--green); background: rgba(74,222,128,0.1); }
+    .plan-name { font-size: 1.2rem; font-weight: 800; margin-bottom: 4px; }
+    .plan-meta { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 14px; }
+    .plan-actions { display: flex; gap: 10px; }
+    .plan-actions > * { flex: 1; }
+
+    /* Modal Plan */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      z-index: 200; display: none; align-items: flex-end;
+      backdrop-filter: blur(4px);
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-sheet {
+      background: var(--card); border-radius: 24px 24px 0 0;
+      width: 100%; max-width: 480px; margin: 0 auto;
+      padding: 24px 20px calc(24px + var(--safe-bottom));
+      max-height: 90dvh; overflow-y: auto;
+    }
+    .modal-sheet::-webkit-scrollbar { display: none; }
+    .modal-handle {
+      width: 40px; height: 4px; background: var(--card3);
+      border-radius: 4px; margin: 0 auto 20px;
+    }
+    .modal-sheet h2 { font-size: 1.2rem; font-weight: 800; margin-bottom: 20px; }
+
+    .plan-type-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .plan-type-btn {
+      background: var(--card2); border: 1px solid var(--border);
+      color: var(--text-muted); border-radius: 10px; padding: 8px 12px;
+      font-size: 0.8rem; font-weight: 600; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .plan-type-btn.active { background: var(--blue-dim); border-color: var(--blue); color: var(--blue); }
+
+    .plan-ex-row {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--card2); border-radius: 10px;
+      padding: 10px 12px; margin-bottom: 8px;
+    }
+    .plan-ex-num { font-size: 0.8rem; color: var(--text-dim); font-weight: 700; min-width: 18px; }
+    .plan-ex-name { flex: 1; background: transparent; border: none; color: var(--text); font-size: 0.9rem; outline: none; }
+    .plan-ex-name::placeholder { color: var(--text-dim); }
+    .plan-ex-small { width: 46px !important; text-align: center; padding: 6px 4px; font-size: 0.9rem; }
+    .plan-ex-x { color: var(--text-dim); font-size: 0.8rem; }
+
+    .modal-form-row { margin-bottom: 14px; }
+    .modal-form-row label {
+      display: block; font-size: 0.7rem; font-weight: 700; letter-spacing: 1px;
+      color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;
+    }
+    .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .modal-actions > * { flex: 1; }
+
+    /* ============================================================
+       STATS
+    ============================================================ */
+    #view-stats { background: var(--bg); }
+
+    .stats-header {
+      padding: 52px 20px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .stats-month-nav { display: flex; align-items: center; gap: 12px; }
+    .stats-month-title { font-size: 1rem; font-weight: 700; min-width: 140px; text-align: center; }
+
+    /* Summary cards */
+    .stats-summary {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 10px; padding: 0 16px 20px;
+    }
+    .summary-card {
+      background: var(--card); border-radius: 14px; border: 1px solid var(--border);
+      padding: 14px 12px; text-align: center;
+    }
+    .summary-val {
+      font-size: 1.2rem; font-weight: 800; line-height: 1.1; margin-bottom: 4px;
+      word-break: break-all;
+    }
+    .summary-lbl { font-size: 0.65rem; font-weight: 600; letter-spacing: 0.5px; color: var(--text-muted); }
+
+    /* Charts */
+    .chart-section { padding: 0 16px 20px; }
+    .chart-card {
+      background: var(--card); border-radius: 16px; border: 1px solid var(--border);
+      padding: 16px;
+    }
+    .chart-title {
+      font-size: 0.85rem; font-weight: 700; margin-bottom: 14px; color: var(--text);
+    }
+    .chart-canvas-wrap { height: 180px; position: relative; }
+
+    .chart-select-row { margin-bottom: 12px; }
+    #stats-exercise-select { font-size: 0.85rem; }
+
+    /* ============================================================
+       DETAIL MODAL
+    ============================================================ */
+    .detail-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .detail-type-badge {
+      font-size: 0.78rem; font-weight: 700; letter-spacing: 0.5px;
+      padding: 5px 12px; border-radius: 20px;
+    }
+    .detail-date { font-size: 0.8rem; color: var(--text-muted); }
+    .detail-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 14px; }
+    .detail-volume {
+      background: var(--card2); border-radius: 10px; padding: 10px 14px;
+      font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;
+    }
+    .detail-volume strong { color: var(--blue); font-size: 1rem; }
+    .detail-exercise { margin-bottom: 12px; }
+    .detail-ex-name {
+      font-size: 0.9rem; font-weight: 700; margin-bottom: 6px; color: var(--text);
+    }
+    .detail-sets { display: flex; flex-wrap: wrap; gap: 6px; }
+    .detail-set-chip {
+      background: var(--card2); border-radius: 8px;
+      padding: 5px 10px; font-size: 0.8rem; color: var(--text-muted);
+    }
+    .detail-cardio-stats {
+      display: flex; gap: 14px; margin-bottom: 14px; flex-wrap: wrap;
+    }
+    .dc-stat { text-align: center; }
+    .dc-val { font-size: 1.8rem; font-weight: 800; display: block; }
+    .dc-lbl { font-size: 0.7rem; color: var(--text-muted); font-weight: 600; letter-spacing: 1px; }
+    .detail-footer-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .detail-footer-actions > * { flex: 1; }
+
+    /* History modal */
+    .history-entry { margin-bottom: 14px; }
+    .history-date {
+      font-size: 0.78rem; font-weight: 700; color: var(--text-muted);
+      margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .history-sets { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    /* ============================================================
+       RESPONSIVE & SAFE AREAS
+    ============================================================ */
+    @media (min-width: 481px) {
+      #app { border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+      #bottom-nav { border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+    }
+
+    /* Skeleton / loading */
+    @keyframes pulse {
+      0%, 100% { opacity: 0.4; } 50% { opacity: 0.7; }
+    }
+  </style>
+</head>
+
+<body>
+<div id="app">
+
+  <!-- ======================== DASHBOARD ======================== -->
+  <div id="view-dashboard" class="view">
+    <div class="dash-header">
+      <div id="cal-title" class="dash-month-title">Marzec 2026</div>
+      <div class="cal-nav">
+        <button class="cal-nav-btn" id="cal-prev">‹</button>
+        <button class="cal-nav-btn" id="cal-next">›</button>
+      </div>
+    </div>
+
+    <div class="calendar-wrap">
+      <div id="cal-grid">
+        <div class="cal-day-header">Nd</div>
+        <div class="cal-day-header">Pn</div>
+        <div class="cal-day-header">Wt</div>
+        <div class="cal-day-header">Śr</div>
+        <div class="cal-day-header">Cz</div>
+        <div class="cal-day-header">Pt</div>
+        <div class="cal-day-header">So</div>
+      </div>
+    </div>
+
+    <div class="cal-legend">
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#5b7fff"></div> Siłownia
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#f59e0b"></div> Rower
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#9ca3af"></div> Inne
+      </div>
+    </div>
+
+    <div class="section-label">Ostatnie treningi <span style="float:right;font-weight:400;letter-spacing:0">3 ostatnie</span></div>
+    <div id="last-workouts"></div>
+  </div>
+
+  <!-- ======================== LOG ======================== -->
+  <div id="view-log" class="view">
+    <div class="log-header">
+      <div class="log-header-row">
+        <div class="log-title">Nowy trening</div>
+        <div id="current-volume" style="font-size:1rem;font-weight:800;color:var(--blue)">0 kg</div>
+      </div>
+
+      <!-- Typ treningu -->
+      <div class="type-selector">
+        <button class="type-btn active" data-type="silownia">🏋️ Siłownia</button>
+        <button class="type-btn" data-type="rower">🚴 Rower</button>
+        <button class="type-btn" data-type="inne">⚡ Inne</button>
+      </div>
+    </div>
+
+    <!-- Data + nazwa -->
+    <div class="log-form">
+      <div class="log-form-row">
+        <input type="date" id="log-date" class="date-input">
+        <input type="text" id="log-name" placeholder="Nazwa (opcjonalnie)">
+      </div>
+    </div>
+
+    <!-- SEKCJA SIŁOWNIA -->
+    <div id="section-gym">
+      <div id="exercises-list"></div>
+
+      <button class="add-exercise-btn" id="btn-add-exercise">
+        + Dodaj ćwiczenie
+      </button>
+    </div>
+
+    <!-- SEKCJA CARDIO -->
+    <div id="section-cardio" style="display:none">
+      <div class="cardio-form">
+        <div class="cardio-form-grid">
+          <div class="cardio-field">
+            <label>Dystans (km)</label>
+            <input type="number" id="log-distance" inputmode="decimal" placeholder="0.0" step="0.1">
+          </div>
+          <div class="cardio-field">
+            <label>Czas (hh:mm:ss)</label>
+            <input type="text" id="log-duration" placeholder="00:30:00">
+          </div>
+          <div class="cardio-field">
+            <label>Śr. tętno (bpm)</label>
+            <input type="number" id="log-heartrate" inputmode="numeric" placeholder="140">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Zapis -->
+    <button class="save-workout-btn" id="btn-save-workout">💾 Zapisz trening</button>
+
+    <!-- Rest Timer (pływający pasek) -->
+    <div id="rest-timer-bar">
+      <div class="rest-bar-row">
+        <span id="rest-label">Odpoczynek…</span>
+        <div class="rest-time-wrap">
+          <span id="rest-remaining">01:30</span>
+          <span id="rest-total">/ 01:30</span>
+          <button id="rest-duration-btn" title="Edytuj czas">✏️</button>
+        </div>
+      </div>
+      <div class="rest-track"><div id="rest-progress"></div></div>
+    </div>
+  </div>
+
+  <!-- ======================== PLANS ======================== -->
+  <div id="view-plans" class="view">
+    <div class="plans-header">
+      <div>
+        <div class="page-title">Plany</div>
+        <div class="page-sub">Twoje schematy treningowe</div>
+      </div>
+      <button class="btn-primary" id="btn-new-plan">+ Nowy</button>
+    </div>
+    <div id="plans-list"></div>
+  </div>
+
+  <!-- ======================== STATS ======================== -->
+  <div id="view-stats" class="view">
+    <div class="stats-header">
+      <div class="page-title">Statystyki</div>
+      <div class="stats-month-nav">
+        <button class="cal-nav-btn" id="stats-prev">‹</button>
+        <div id="stats-month-name" class="stats-month-title">Marzec 2026</div>
+        <button class="cal-nav-btn" id="stats-next">›</button>
+      </div>
+    </div>
+
+    <!-- Podsumowanie -->
+    <div class="stats-summary">
+      <div class="summary-card">
+        <div class="summary-val" id="stats-volume" style="color:var(--blue)">0 kg</div>
+        <div class="summary-lbl">Objętość</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-val" id="stats-distance" style="color:var(--purple)">0 km</div>
+        <div class="summary-lbl">Dystans</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-val" id="stats-count" style="color:var(--green)">0</div>
+        <div class="summary-lbl">Treningi</div>
+      </div>
+    </div>
+
+    <!-- Wykres: postęp siły -->
+    <div class="chart-section">
+      <div class="chart-card" id="chart-strength-wrap">
+        <div class="chart-title">📈 Postęp siły</div>
+        <div class="chart-select-row">
+          <select id="stats-exercise-select">
+            <option value="">— wybierz ćwiczenie —</option>
+          </select>
+        </div>
+        <div class="chart-canvas-wrap">
+          <canvas id="chart-strength"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Wykres: objętość tygodniowa -->
+    <div class="chart-section">
+      <div class="chart-card">
+        <div class="chart-title">📊 Objętość tygodniowa (ostatnie 4 tyg.)</div>
+        <div class="chart-canvas-wrap">
+          <canvas id="chart-volume"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Wykres: podział aktywności -->
+    <div class="chart-section">
+      <div class="chart-card">
+        <div class="chart-title">🥧 Podział aktywności (miesiąc)</div>
+        <div class="chart-canvas-wrap">
+          <canvas id="chart-activity"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================== BOTTOM NAV ======================== -->
+  <nav id="bottom-nav">
+    <button class="nav-btn active" data-view="dashboard">
+      <span class="nav-icon">📅</span>Dashboard
+    </button>
+    <button class="nav-btn" data-view="log">
+      <span class="nav-icon">📝</span>Log
+    </button>
+    <button id="fab">+</button>
+    <button class="nav-btn" data-view="plans">
+      <span class="nav-icon">☰</span>Plany
+    </button>
+    <button class="nav-btn" data-view="stats">
+      <span class="nav-icon">📊</span>Statystyki
+    </button>
+  </nav>
+
+</div><!-- /#app -->
+
+<!-- ======================== MODAL: Szczegóły treningu ======================== -->
+<div class="modal-overlay" id="modal-detail">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div id="modal-detail-content"></div>
+  </div>
+</div>
+
+<!-- ======================== MODAL: Edytor planu ======================== -->
+<div class="modal-overlay" id="modal-plan">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <h2 id="modal-plan-title">Nowy plan</h2>
+
+    <div class="modal-form-row">
+      <label>Nazwa planu</label>
+      <input type="text" id="plan-name-input" placeholder="np. FBW A, Klatka + Biceps">
+    </div>
+
+    <div class="modal-form-row">
+      <label>Typ treningu</label>
+      <div class="plan-type-row">
+        <button class="plan-type-btn active" data-type="silownia">🏋️ Siłownia</button>
+        <button class="plan-type-btn" data-type="rower">🚴 Rower</button>
+        <button class="plan-type-btn" data-type="inne">⚡ Inne</button>
+      </div>
+    </div>
+
+    <div class="modal-form-row">
+      <label>Szacowany czas (min)</label>
+      <input type="number" id="plan-duration-input" placeholder="45" inputmode="numeric">
+    </div>
+
+    <div class="modal-form-row">
+      <label>Ćwiczenia (serie × powtórzenia)</label>
+      <div id="plan-exercises-list"></div>
+      <button class="btn-small" id="btn-add-plan-exercise" style="margin-top:8px;width:100%">
+        + Dodaj ćwiczenie
+      </button>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" id="btn-cancel-plan">Anuluj</button>
+      <button class="btn-danger" id="btn-delete-plan" style="display:none">Usuń</button>
+      <button class="btn-primary" id="btn-save-plan">Zapisz plan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================== MODAL: Historia ćwiczenia ======================== -->
+<div class="modal-overlay" id="modal-history">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div id="modal-history-content"></div>
+    <button class="btn-secondary" onclick="closeHistoryModal()" style="width:100%;margin-top:16px">Zamknij</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- ======================== SCRIPTS ======================== -->
+<!-- Firebase compat SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<!-- Konfiguracja Firebase -->
+<script src="firebase-config.js"></script>
+
+<!-- Logika aplikacji -->
+<script src="app.js"></script>
+
+</body>
+</html>
