@@ -128,8 +128,9 @@ async function initApp() {
     return;
   }
 
-  // Wczytaj dane
-  await Promise.all([loadWorkouts(), loadPlans()]);
+  // Real-time listeners — dane aktualizują się automatycznie
+  subscribeWorkouts();
+  subscribePlans();
 
   // Dolna nawigacja
   document.querySelectorAll('[data-view]').forEach(btn => {
@@ -216,28 +217,35 @@ function showView(viewName) {
 }
 
 // ============================================================
-//  WCZYTYWANIE DANYCH
+//  WCZYTYWANIE DANYCH — real-time listeners (onSnapshot)
 // ============================================================
-async function loadWorkouts() {
-  try {
-    const snap = await db.collection(`users/${state.userId}/workouts`)
-      .orderBy('date', 'desc')
-      .get();
-    state.allWorkouts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  } catch (e) {
-    console.warn('loadWorkouts error:', e);
-  }
+function subscribeWorkouts() {
+  db.collection(`users/${state.userId}/workouts`)
+    .orderBy('date', 'desc')
+    .onSnapshot(snap => {
+      state.allWorkouts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // Odśwież aktywny widok
+      if (state.view === 'dashboard') renderDashboard();
+      if (state.view === 'historia')  renderHistoria();
+      if (state.view === 'stats')     { buildExerciseSelect(); renderStats(); }
+    }, e => console.warn('workouts snapshot error:', e));
 }
 
+function subscribePlans() {
+  db.collection(`users/${state.userId}/plans`)
+    .orderBy('name')
+    .onSnapshot(snap => {
+      state.plans = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (state.view === 'plans') renderPlans();
+    }, e => console.warn('plans snapshot error:', e));
+}
+
+// Zachowane dla kompatybilności (używane przy zapisie po loadzie)
+async function loadWorkouts() {
+  // Dane wczytuje onSnapshot — ta funkcja jest pusta
+}
 async function loadPlans() {
-  try {
-    const snap = await db.collection(`users/${state.userId}/plans`)
-      .orderBy('name')
-      .get();
-    state.plans = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  } catch (e) {
-    console.warn('loadPlans error:', e);
-  }
+  // Dane wczytuje onSnapshot — ta funkcja jest pusta
 }
 
 // ============================================================
@@ -1190,8 +1198,7 @@ function closeLog() {
   showView('dashboard');
 }
 
-function initSwipeDown() {
-  const el = document.getElementById('view-log');
+function addSwipeClose(el, closeFn) {
   let startY = 0, startX = 0;
   el.addEventListener('touchstart', e => {
     startY = e.touches[0].clientY;
@@ -1200,8 +1207,29 @@ function initSwipeDown() {
   el.addEventListener('touchend', e => {
     const dy = e.changedTouches[0].clientY - startY;
     const dx = Math.abs(e.changedTouches[0].clientX - startX);
-    if (dy > 80 && dx < 40 && el.scrollTop === 0) closeLog();
+    if (dy > 80 && dx < 40) closeFn();
   }, { passive: true });
+}
+
+function initSwipeDown() {
+  // Swipe na widoku logowania (przy scrollu na górze)
+  const logEl = document.getElementById('view-log');
+  let startY = 0, startX = 0;
+  logEl.addEventListener('touchstart', e => {
+    startY = e.touches[0].clientY;
+    startX = e.touches[0].clientX;
+  }, { passive: true });
+  logEl.addEventListener('touchend', e => {
+    const dy = e.changedTouches[0].clientY - startY;
+    const dx = Math.abs(e.changedTouches[0].clientX - startX);
+    if (dy > 80 && dx < 40 && logEl.scrollTop === 0) closeLog();
+  }, { passive: true });
+
+  // Swipe na modalach (bottom sheets)
+  document.querySelectorAll('.modal-sheet').forEach(sheet => {
+    const overlay = sheet.parentElement;
+    addSwipeClose(sheet, () => overlay.classList.remove('active'));
+  });
 }
 
 // ---- Kopiuj trening do schowka ----
