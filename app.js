@@ -107,12 +107,15 @@ async function initApp() {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
 
-  // User ID — prosty identyfikator w localStorage (single-user)
-  state.userId = localStorage.getItem('trening_userId');
-  if (!state.userId) {
-    state.userId = 'user_' + Date.now();
-    localStorage.setItem('trening_userId', state.userId);
+  // User ID z hasha URL — ten sam na wszystkich urządzeniach
+  let hash = window.location.hash.slice(1);
+  if (!hash || hash.length < 6) {
+    // Brak hasha — wygeneruj i przekieruj
+    hash = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10);
+    window.location.replace('./index.html#' + hash);
+    return;
   }
+  state.userId = 'user_' + hash;
 
   // Firebase init
   try {
