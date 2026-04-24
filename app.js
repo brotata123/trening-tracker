@@ -264,7 +264,8 @@ function renderCalendar() {
 
   document.getElementById('cal-title').textContent = `${MONTHS[month]} ${year}`;
 
-  const firstDay    = new Date(year, month, 1).getDay();  // 0=Nd
+  const firstDayRaw = new Date(year, month, 1).getDay(); // 0=Nd
+  const firstDay    = firstDayRaw === 0 ? 6 : firstDayRaw - 1; // Pn=0 … Nd=6
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today       = new Date();
 
@@ -281,7 +282,7 @@ function renderCalendar() {
   grid.innerHTML = '';
   headers.forEach(h => grid.appendChild(h));
 
-  // Puste komórki przed 1. dniem (Nd=0 → przesunięcie)
+  // Puste komórki przed 1. dniem (Pn=0)
   for (let i = 0; i < firstDay; i++) {
     grid.appendChild(mkEl('div', 'cal-cell empty'));
   }
